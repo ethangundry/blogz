@@ -76,6 +76,26 @@ def newpost():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    login_fields = {}
+    login_errors = {}
+    login_has_error = False
+
+    if request.method == 'POST':
+        #sets values for the fields
+        login_fields['username'] = request.form['username']
+        login_fields['password'] = request.form['password']
+        login_fields['password_confirm'] = request.form['password_confirm']
+
+        # error for username
+        if not login_fields['username'] or len(login_fields['username']) < 3 #or login_fields['username'] in(whatever the database list of usernames is):
+            errors['username'] = "Complete the username field. Must be 3 characters or more"
+            has_error = True
+
+        # error for password
+        if not login_fields['password'] or len(login_fields['password']) < 3:
+            errors['password'] = "Password is invalid. Must be 3 characters or more"
+            has_error = True
+        
 
 @app.route('signup', methods=['GET', 'POST'])
 def signup():
@@ -97,7 +117,7 @@ def signup():
 
         # error for password
         if not signup_fields['password'] or len(signup_fields['password']) < 3:
-            errors['password'] = "Password is invalid. Must be 3 characters or more and less than 20 characters with no spaces"
+            errors['password'] = "Password is invalid. Must be 3 characters or more"
             has_error = True
 
         # error for password_confirm
