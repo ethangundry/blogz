@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -41,7 +41,13 @@ class User(db.Model):
         self.username = username
         self.password = password
 
-posts = []
+
+@app.before_request
+def require_login():
+    allowed_routes = ['login', 'signup']
+    if request.endpoint not in allowed_routes and 'username' not in session:
+        return redirect('login')
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -74,56 +80,55 @@ def newpost():
     else :
         return render_template("newpost.html",title="New Post")
 
-@app.route('/login', methods=['GET', 'POST'])
+
+
+
+@app.route('/login', methods=['POST', 'GET'])
 def login():
-    login_fields = {}
-    login_errors = {}
-    login_has_error = False
-
     if request.method == 'POST':
-        #sets values for the fields
-        login_fields['username'] = request.form['username']
-        login_fields['password'] = request.form['password']
-        login_fields['password_confirm'] = request.form['password_confirm']
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        if user and user.password == password:
+            session['username'] = username
+            flash("Logged in")
+            return redirect('/newpost')
+        elif user and user.password != password:
+            flash('User password incorrect', 'error')
+        else:
+            flash('User does not exist', 'error')
 
-        # error for username
-        if not login_fields['username'] or len(login_fields['username']) < 3 #or login_fields['username'] in(whatever the database list of usernames is):
-            errors['username'] = "Complete the username field. Must be 3 characters or more"
-            has_error = True
-
-        # error for password
-        if not login_fields['password'] or len(login_fields['password']) < 3:
-            errors['password'] = "Password is invalid. Must be 3 characters or more"
-            has_error = True
+    return render_template('login.html') 
         
 
-@app.route('signup', methods=['GET', 'POST'])
+@app.route('/signup', methods=['POST', 'GET'])
 def signup():
-    #template defaults
-    signup_fields = {}
-    signup_errors = {}
-    signup_has_error = False
-
     if request.method == 'POST':
-        #sets values for the fields
-        signup_fields['username'] = request.form['username']
-        signup_fields['password'] = request.form['password']
-        signup_fields['password_confirm'] = request.form['password_confirm']
+        username = request.form['username']
+        password = request.form['password']
+        verify = request.form['verify']
 
-        # error for username
-        if not signup_fields['username'] or len(signup_fields['username']) < 3 #or signup_fields['username'] in(whatever the database list of usernames is):
-            errors['username'] = "Complete the username field. Must be 3 characters or more"
-            has_error = True
+        if password != verify:
+            flash("Your password did not match the confirmation", "error")
+            return redirect('/signup')
 
-        # error for password
-        if not signup_fields['password'] or len(signup_fields['password']) < 3:
-            errors['password'] = "Password is invalid. Must be 3 characters or more"
-            has_error = True
+        existing_user = User.query.filter_by(username=username).first()
+        if not existing_user:
+            new_user = User(username, password)
+            db.session.add(new_user)
+            db.session.commit()
+            session['username'] = username
+            return redirect('/')
+        else:
+            flash("Duplicate user", "error")
 
-        # error for password_confirm
-        if signup_fields['password']  != signup_fields['password_confirm']:
-            errors['password_confirm'] = "Passwords do not match"
-            has_error = True
+    return render_template('signup.html')
+
+@app.route('/logout')
+def logout():
+    del session['username']
+    return redirect('/')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
