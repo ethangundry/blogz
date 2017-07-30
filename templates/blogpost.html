@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+
+	{% if post %}
     <h2>{{ post.name }}</h2>
     <hr>
     <p>{{ post.body }}</p>
+   	{% else %}
+   		Post not found - no ID 
+   	{%endif %}
 
 {% endblock %}

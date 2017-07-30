@@ -44,7 +44,7 @@ class User(db.Model):
 
 @app.before_request
 def require_login():
-    allowed_routes = ['login', 'signup']
+    allowed_routes = ['login', 'signup', 'blog', 'index']
     if request.endpoint not in allowed_routes and 'username' not in session:
         return redirect('login')
 
@@ -52,13 +52,20 @@ def require_login():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     posts = Blogpost.query.all()
-    return render_template("blog.html", title="Build-A-Blog", posts=posts)
+    return render_template("blog.html", title="Blogz", posts=posts)
 
 @app.route('/blog')
 def blog():
     post_id = request.args.get('id')
-    post = Blogpost.query.get(post_id)
-    return render_template("blogpost.html", title="Build-A-Blog", post=post)
+    post = []
+
+    if post_id :
+        post = Blogpost.query.get(post_id)
+        return render_template("blogpost.html", title="Blogz", post=post)
+    else: 
+        # should return a 404 probably instead of using the templatemes
+        return render_template("blogpost.html", title="Blogz", post=post)
+    
 
 @app.route('/newpost', methods=['GET', 'POST'])
 def newpost():
@@ -108,8 +115,20 @@ def signup():
         password = request.form['password']
         verify = request.form['verify']
 
+        if username == '' or password == '' or verify == '':
+            flash("One or more fields are empty", "error")
+            return redirect('/signup')
+
         if password != verify:
-            flash("Your password did not match the confirmation", "error")
+            flash("Your passwords did not match", "error")
+            return redirect('/signup')
+
+        if len(username) < 3:
+            flash("Your username cannot be less than three characters", "error")
+            return redirect('/signup')
+
+        if len(password) < 3:
+            flash("Your username cannot be less than three characters", "error")
             return redirect('/signup')
 
         existing_user = User.query.filter_by(username=username).first()
@@ -120,7 +139,7 @@ def signup():
             session['username'] = username
             return redirect('/')
         else:
-            flash("Duplicate user", "error")
+            flash("Username already existing_user", "error")
 
     return render_template('signup.html')
 
