@@ -20,6 +20,9 @@
             <div>
             	 {{blogpost.body}}   
             </div>
+            <p>
+                Written by <a href="/blog?user={{blogpost.owner_id}}">{{blogpost.user.username}}</a>
+            </p>
             <hr />
             {% endfor %}
         </div>

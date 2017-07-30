@@ -27,15 +27,19 @@ class Blogpost(db.Model):
     body = db.Column(db.String(120))
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    def __init__(self, name, body, owner_id):
+    def __init__(self, name, body, user):
         self.name = name
         self.body = body
+        self.owner_id = user.id
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), unique=True)
     password = db.Column(db.String(120))
     posts = db.relationship('Blogpost', backref='user', lazy='dynamic')
+
+    def get_user_by_username(username):
+        return User.query.filter_by(username=username).first()
 
     def __init__(self, username, password):
         self.username = username
@@ -45,39 +49,53 @@ class User(db.Model):
 @app.before_request
 def require_login():
     allowed_routes = ['login', 'signup', 'blog', 'index']
+    print(request.endpoint)
     if request.endpoint not in allowed_routes and 'username' not in session:
         return redirect('login')
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    posts = Blogpost.query.all()
-    return render_template("blog.html", title="Blogz", posts=posts)
+    users = User.query.all()
+    return render_template("index.html", title="Blogz", users=users)
 
 @app.route('/blog')
 def blog():
-    post_id = request.args.get('id')
-    post = []
 
-    if post_id :
+    owner_id = request.args.get('user')
+    post_id = request.args.get('id')
+
+    if owner_id:
+        posts = Blogpost.query.filter_by(owner_id=owner_id).all()
+        return render_template("blog.html", title="Blogz", posts=posts)
+    elif post_id:
         post = Blogpost.query.get(post_id)
         return render_template("blogpost.html", title="Blogz", post=post)
-    else: 
-        # should return a 404 probably instead of using the templatemes
-        return render_template("blogpost.html", title="Blogz", post=post)
+    else:
+        posts = Blogpost.query.all()
+        return render_template("blog.html", title="Blogz", posts=posts)
     
 
 @app.route('/newpost', methods=['GET', 'POST'])
 def newpost():
 
+    if session['username']:
+        user = User.get_user_by_username(session['username'])
+
+        # if this user is not found redirect to login
+        if not user:
+            return redirect(url_for("login"))
+    else:
+        return redirect(url_for("login"))
+
+
     if request.method == 'POST':
+
         name = request.form['name']
         body = request.form['body']
-
-        # you need to remove the hardcoded value here and get it from the login
-        owner_id = 1
-
-        post = Blogpost(name, body, owner_id)
+        author = user
+    
+        post = Blogpost(name, body, author)
         db.session.add(post)
         db.session.commit()
         
